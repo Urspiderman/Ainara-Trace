@@ -22,10 +22,19 @@ export async function POST(request: Request) {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model,
-      input: [{ role: "developer", content: [{ type: "input_text", text: SYSTEM_PROMPT }] }, ...messages.map((m) => ({ role: m.role, content: [{ type: "input_text", text: m.content }] }))],
-      max_output_tokens: 500,
-    }),
+  model,
+  input: [
+  {
+    role: "developer",
+    content: SYSTEM_PROMPT,
+  },
+  ...messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  })),
+],
+  max_output_tokens: 500,
+}),
   });
 
   if (!upstream.ok) {
