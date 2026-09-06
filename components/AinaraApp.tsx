@@ -164,7 +164,7 @@ export default function AinaraApp() {
             <div><strong>Protected workspace</strong><p>Traceability data stays scoped to your organization.</p></div>
           </div>
         )}
-        <div className="profile-row"><div className="avatar">AR</div>{sidebarOpen && <div><strong>Aruna Raya</strong><span>Workspace Admin</span></div>}</div>
+        <div className="profile-row"><div className="avatar">AR</div>{sidebarOpen && <div><strong>Disah</strong><span>Workspace Admin</span></div>}</div>
       </aside>
 
       <main className="main-content">
@@ -198,7 +198,7 @@ function Overview({ batches, suppliers, onSelectBatch }: { batches: GoldBatch[];
   const verified = batches.filter((b) => b.status !== "Under Review").length;
   return <>
     <div className="hero-row">
-      <div><h2>Good morning, Aruna.</h2><p>Here is the latest traceability picture across your recycled gold network.</p></div>
+      <div><h2>Good morning, Disah.</h2><p>Here is the latest traceability picture across your recycled gold network.</p></div>
       <button className="gold-btn" onClick={() => document.getElementById("latest-batches")?.scrollIntoView({ behavior: "smooth" })}><ArrowDownToLine size={17} /> Export overview</button>
     </div>
 
