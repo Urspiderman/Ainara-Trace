@@ -1,49 +1,106 @@
 import { NextResponse } from "next/server";
 
-const SYSTEM_PROMPT = `You are AINARA Assistant, a concise B2B assistant for AINARA Trace, a digital traceability platform for recycled gold. Explain platform workflows clearly. AINARA records and connects provenance data; it is not a certification body and must not claim to independently certify legality or origin. When discussing verification, refer to verification partners or competent third parties. Avoid inventing transaction facts. Respond in Indonesian unless the user asks for another language.`;
+const SYSTEM_PROMPT = `
+Kamu adalah AINARA Assistant, asisten AI untuk platform AINARA Trace.
 
-type Message = { role: "user" | "assistant"; content: string };
+AINARA adalah digital traceability platform untuk recycled gold.
+Kamu membantu pengguna memahami:
+- supplier
+- gold batch
+- traceability
+- verification record
+- document intelligence
+- anomaly detection
+- reporting
 
-export async function POST(request: Request) {
-  const { messages } = (await request.json()) as { messages?: Message[] };
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return NextResponse.json({ error: "Messages are required." }, { status: 400 });
+Jawab dalam Bahasa Indonesia yang profesional, jelas, dan ringkas.
+Jangan mengklaim bahwa AINARA dapat menjamin legalitas atau membuktikan bahwa emas berasal dari sumber tertentu.
+AINARA menyediakan data traceability dan evidence untuk mendukung proses verification, audit, dan compliance.
+`;
+
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export async function POST(req: Request) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          error:
+            "GEMINI_API_KEY belum dikonfigurasi. Tambahkan API key Gemini.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const body = await req.json();
+
+    const messages: Message[] = Array.isArray(body?.messages)
+      ? body.messages
+      : [];
+
+    const contents = [
+      {
+        role: "user",
+        parts: [{ text: SYSTEM_PROMPT }],
+      },
+      ...messages.map((message) => ({
+        role: message.role === "assistant" ? "model" : "user",
+        parts: [{ text: message.content }],
+      })),
+    ];
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents,
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 500,
+          },
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Gemini error", JSON.stringify(data, null, 2));
+
+      return NextResponse.json(
+        {
+          error:
+            data?.error?.message ||
+            "Gemini API mengalami kendala.",
+        },
+        { status: response.status }
+      );
+    }
+
+    const text =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((part: { text?: string }) => part.text || "")
+        .join("") || "Maaf, saya belum dapat memberikan jawaban.";
+
+    return NextResponse.json({ text });
+  } catch (error) {
+    console.error("Chat API error", error);
+
+    return NextResponse.json(
+      {
+        error: "AINARA Assistant mengalami kendala.",
+      },
+      { status: 500 }
+    );
   }
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({
-      content: "Saya siap membantu menjelaskan AINARA. Untuk mode AI penuh, tambahkan OPENAI_API_KEY di environment Vercel atau .env.local. Saat ini prototype dapat tetap digunakan dengan data demo.",
-    });
-  }
-
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-  const upstream = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-  model,
-  input: [
-  {
-    role: "developer",
-    content: SYSTEM_PROMPT,
-  },
-  ...messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  })),
-],
-  max_output_tokens: 500,
-}),
-  });
-
-  if (!upstream.ok) {
-    const errorText = await upstream.text();
-    console.error("OpenAI error", errorText);
-    return NextResponse.json({ content: "Maaf, AINARA Assistant sedang mengalami kendala. Silakan coba lagi." }, { status: 200 });
-  }
-
-  const data = await upstream.json();
-  const content = data.output_text ?? "Maaf, saya belum mendapatkan respons.";
-  return NextResponse.json({ content });
 }
