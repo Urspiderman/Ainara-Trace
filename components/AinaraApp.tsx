@@ -84,7 +84,7 @@ export default function AinaraApp() {
       if (batchRows?.length) {
         const mapped = batchRows.map((r) => ({
           id: r.batch_code,
-          supplier: Array.isArray(r.suppliers) ? (r.suppliers[0]?.name ?? "Unknown supplier") : (r.suppliers?.name ?? "Unknown supplier"),
+          supplier: "Unknown supplier",
           weight: Number(r.weight_grams),
           purity: r.purity ? `${r.purity}%` : "—",
           status: r.status,
