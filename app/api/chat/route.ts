@@ -4,6 +4,7 @@ const SYSTEM_PROMPT = `
 Kamu adalah AINARA Assistant, asisten AI untuk platform AINARA Trace.
 
 AINARA adalah digital traceability platform untuk recycled gold.
+
 Kamu membantu pengguna memahami:
 - supplier
 - gold batch
@@ -14,8 +15,12 @@ Kamu membantu pengguna memahami:
 - reporting
 
 Jawab dalam Bahasa Indonesia yang profesional, jelas, dan ringkas.
-Jangan mengklaim bahwa AINARA dapat menjamin legalitas atau membuktikan bahwa emas berasal dari sumber tertentu.
-AINARA menyediakan data traceability dan evidence untuk mendukung proses verification, audit, dan compliance.
+
+Jangan mengklaim bahwa AINARA dapat menjamin legalitas emas
+atau membuktikan bahwa emas berasal dari sumber tertentu.
+
+AINARA menyediakan digital traceability record dan evidence
+untuk mendukung proses verification, audit, dan compliance.
 `;
 
 type Message = {
@@ -26,14 +31,11 @@ type Message = {
 export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const model = process.env.GEMINI_MODEL || "gemini-3.7-flash";
 
     if (!apiKey) {
       return NextResponse.json(
-        {
-          error:
-            "GEMINI_API_KEY belum dikonfigurasi. Tambahkan API key Gemini.",
-        },
+        { error: "GEMINI_API_KEY belum tersedia." },
         { status: 500 }
       );
     }
@@ -44,25 +46,31 @@ export async function POST(req: Request) {
       ? body.messages
       : [];
 
-    const contents = [
-      {
-        role: "user",
-        parts: [{ text: SYSTEM_PROMPT }],
-      },
-      ...messages.map((message) => ({
-        role: message.role === "assistant" ? "model" : "user",
-        parts: [{ text: message.content }],
-      })),
-    ];
+    const contents = messages.map((message) => ({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: [
+        {
+          text: message.content,
+        },
+      ],
+    }));
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
         },
         body: JSON.stringify({
+          systemInstruction: {
+            parts: [
+              {
+                text: SYSTEM_PROMPT,
+              },
+            ],
+          },
           contents,
           generationConfig: {
             temperature: 0.4,
@@ -90,7 +98,8 @@ export async function POST(req: Request) {
     const text =
       data?.candidates?.[0]?.content?.parts
         ?.map((part: { text?: string }) => part.text || "")
-        .join("") || "Maaf, saya belum dapat memberikan jawaban.";
+        .join("") ||
+      "Maaf, saya belum dapat memberikan jawaban.";
 
     return NextResponse.json({ text });
   } catch (error) {
